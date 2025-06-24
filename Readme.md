@@ -26,7 +26,7 @@ decided to try my hand at making my own application to do just what I want, hope
 and effortlessly as one possibly can.
 ```
 
-<img align="left" src="https://substack-post-media.s3.amazonaws.com/public/images/76ae7146-04ff-4b1a-8154-a822305ce316_1024x768.jpeg" alt="Credit: The Dads After Dark Show" width="320" height="240" /> 
+<img align="left" src="https://substack-post-media.s3.amazonaws.com/public/images/76ae7146-04ff-4b1a-8154-a822305ce316_1024x768.jpeg" alt="Credit: The Dads After Dark Show" width="320" height="245" /> 
 
 ```
 Features:
