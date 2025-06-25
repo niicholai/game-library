@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         igdb_client,
     });
 
-    // Build the application router with static file serving
+    // Build the application router with fallback_service for static files
     let app = Router::new()
         // API routes
         .route("/health", get(handlers::health_check))
@@ -61,8 +61,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/search/igdb", get(handlers::search_igdb_games))
         .with_state(state)
         .layer(CorsLayer::permissive())
-        // Serve static files (HTML, CSS, JS) from the static directory
-        .nest_service("/", ServeDir::new("static"));
+        // Use fallback_service instead of nest_service for serving static files
+        .fallback_service(ServeDir::new("static"));
 
     // Start the server
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
