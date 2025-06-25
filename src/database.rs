@@ -1,8 +1,10 @@
-use sqlx::{SqlitePool, Row};
+use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, Row};
 use anyhow::Result;
-use chrono::{DateTime, Utc}; // Added DateTime import
+use chrono::Utc;
 use uuid::Uuid;
+use std::str::FromStr;
 use crate::models::{Game, CreateGameRequest, UpdateGameRequest};
+
 
 pub struct Database {
     pool: SqlitePool,
@@ -10,10 +12,14 @@ pub struct Database {
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
-        let pool = SqlitePool::connect(database_url).await?;
+        // Use SqliteConnectOptions to ensure database creation
+        let options = SqliteConnectOptions::from_str(database_url)?
+            .create_if_missing(true);
+
+        let pool = SqlitePool::connect_with(options).await?;
 
         // Run migrations
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        sqlx::migrate!().run(&pool).await?;
 
         Ok(Database { pool })
     }
@@ -74,7 +80,6 @@ impl Database {
     pub async fn update_game(&self, id: &str, request: UpdateGameRequest) -> Result<Option<Game>> {
         let now = Utc::now();
 
-        // Simplified update approach - update each field individually if provided
         if let Some(name) = request.name {
             sqlx::query("UPDATE games SET name = ?, updated_at = ? WHERE id = ?")
                 .bind(name)
@@ -117,45 +122,50 @@ impl Database {
     pub async fn update_game_metadata(&self, id: &str, igdb_game: &crate::models::IgdbGame) -> Result<()> {
         let now = Utc::now();
 
-        let release_date = igdb_game.first_release_date
-            .and_then(|timestamp| DateTime::from_timestamp(timestamp, 0));
+        // Fixed: Using the non-deprecated DateTime::from_timestamp
+        let release_date = igdb_game.first_release_date.and_then(|timestamp| {
+            chrono::DateTime::from_timestamp(timestamp, 0)
+        });
 
-        let cover_url = igdb_game.cover.as_ref()
-            .map(|cover| format!("https:{}", cover.url.replace("t_thumb", "t_cover_big")));
+        let cover_url = igdb_game.cover.as_ref().map(|cover| {
+            format!("https:{}", cover.url.replace("t_thumb", "t_cover_big"))
+        });
 
-        let screenshots = igdb_game.screenshots.as_ref()
-            .map(|screenshots| {
-                serde_json::to_string(&screenshots.iter()
-                    .map(|s| format!("https:{}", s.url.replace("t_thumb", "t_screenshot_med")))
-                    .collect::<Vec<_>>())
-                    .unwrap_or_default()
-            });
+        let screenshots = igdb_game.screenshots.as_ref().map(|screenshots| {
+            serde_json::to_string(&screenshots.iter()
+                .map(|s| format!("https:{}", s.url.replace("t_thumb", "t_screenshot_med")))
+                .collect::<Vec<_>>())
+                .unwrap_or_default()
+        });
 
-        let genres = igdb_game.genres.as_ref()
-            .map(|genres| serde_json::to_string(genres).unwrap_or_default());
+        let genres = igdb_game.genres.as_ref().map(|genres| {
+            serde_json::to_string(genres).unwrap_or_default()
+        });
 
-        let platforms = igdb_game.platforms.as_ref()
-            .map(|platforms| serde_json::to_string(platforms).unwrap_or_default());
+        let platforms = igdb_game.platforms.as_ref().map(|platforms| {
+            serde_json::to_string(platforms).unwrap_or_default()
+        });
 
-        // Fixed tuple destructuring
-        let developer = igdb_game.involved_companies.as_ref()
-            .and_then(|companies| companies.iter()
+        let developer = igdb_game.involved_companies.as_ref().and_then(|companies| {
+            companies.iter()
                 .find(|c| c.developer)
-                .map(|c| c.company.name.clone()));
+                .map(|c| c.company.name.clone())
+        });
 
-        let publisher = igdb_game.involved_companies.as_ref()
-            .and_then(|companies| companies.iter()
+        let publisher = igdb_game.involved_companies.as_ref().and_then(|companies| {
+            companies.iter()
                 .find(|c| c.publisher)
-                .map(|c| c.company.name.clone()));
+                .map(|c| c.company.name.clone())
+        });
 
         sqlx::query(
             r#"
-            UPDATE games SET 
-                summary = ?, storyline = ?, rating = ?, release_date = ?,
-                cover_url = ?, screenshots = ?, genres = ?, platforms = ?,
-                developer = ?, publisher = ?, updated_at = ?
-            WHERE id = ?
-            "#
+        UPDATE games SET
+            summary = ?, storyline = ?, rating = ?, release_date = ?,
+            cover_url = ?, screenshots = ?, genres = ?, platforms = ?,
+            developer = ?, publisher = ?, updated_at = ?
+        WHERE id = ?
+        "#
         )
             .bind(&igdb_game.summary)
             .bind(&igdb_game.storyline)
