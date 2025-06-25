@@ -5,23 +5,24 @@ use uuid::Uuid;
 use std::str::FromStr;
 use crate::models::{Game, CreateGameRequest, UpdateGameRequest};
 
-
 pub struct Database {
     pool: SqlitePool,
 }
 
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
-        // Use SqliteConnectOptions to ensure database creation
         let options = SqliteConnectOptions::from_str(database_url)?
             .create_if_missing(true);
 
         let pool = SqlitePool::connect_with(options).await?;
 
-        // Run migrations
         sqlx::migrate!().run(&pool).await?;
 
         Ok(Database { pool })
+    }
+
+    pub fn get_pool(&self) -> &SqlitePool {
+        &self.pool
     }
 
     pub async fn create_game(&self, request: CreateGameRequest) -> Result<Game> {
@@ -31,8 +32,8 @@ impl Database {
         let game = sqlx::query_as::<_, Game>(
             r#"
             INSERT INTO games (
-                id, igdb_id, name, file_path, is_installed, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                id, igdb_id, name, file_path, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
             RETURNING *
             "#,
         )
@@ -40,7 +41,6 @@ impl Database {
             .bind(request.igdb_id)
             .bind(&request.name)
             .bind(request.file_path)
-            .bind(false)
             .bind(now)
             .bind(now)
             .fetch_one(&self.pool)
@@ -98,15 +98,6 @@ impl Database {
                 .await?;
         }
 
-        if let Some(is_installed) = request.is_installed {
-            sqlx::query("UPDATE games SET is_installed = ?, updated_at = ? WHERE id = ?")
-                .bind(is_installed)
-                .bind(now)
-                .bind(id)
-                .execute(&self.pool)
-                .await?;
-        }
-
         self.get_game_by_id(id).await
     }
 
@@ -122,7 +113,6 @@ impl Database {
     pub async fn update_game_metadata(&self, id: &str, igdb_game: &crate::models::IgdbGame) -> Result<()> {
         let now = Utc::now();
 
-        // Fixed: Using the non-deprecated DateTime::from_timestamp
         let release_date = igdb_game.first_release_date.and_then(|timestamp| {
             chrono::DateTime::from_timestamp(timestamp, 0)
         });
@@ -160,12 +150,12 @@ impl Database {
 
         sqlx::query(
             r#"
-        UPDATE games SET
-            summary = ?, storyline = ?, rating = ?, release_date = ?,
-            cover_url = ?, screenshots = ?, genres = ?, platforms = ?,
-            developer = ?, publisher = ?, updated_at = ?
-        WHERE id = ?
-        "#
+            UPDATE games SET
+                summary = ?, storyline = ?, rating = ?, release_date = ?,
+                cover_url = ?, screenshots = ?, genres = ?, platforms = ?,
+                developer = ?, publisher = ?, updated_at = ?
+            WHERE id = ?
+            "#
         )
             .bind(&igdb_game.summary)
             .bind(&igdb_game.storyline)

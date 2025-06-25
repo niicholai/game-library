@@ -8,7 +8,8 @@ use std::collections::HashMap;
 use crate::{
     database::Database,
     igdb_client::IgdbClient,
-    models::{CreateGameRequest, UpdateGameRequest, GameListResponse, Game},
+    auth_service::AuthService,
+    models::{CreateGameRequest, GameListResponse, Game}, // Removed UpdateGameRequest
 };
 
 pub type AppState = std::sync::Arc<AppStateInner>;
@@ -16,6 +17,7 @@ pub type AppState = std::sync::Arc<AppStateInner>;
 pub struct AppStateInner {
     pub db: Database,
     pub igdb_client: IgdbClient,
+    pub auth_service: AuthService,
 }
 
 #[derive(Deserialize)]
@@ -46,6 +48,7 @@ impl<T> ApiResponse<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn error(message: String) -> Self {
         Self {
             success: false,
@@ -113,35 +116,6 @@ pub async fn get_game(
     }
 }
 
-pub async fn update_game(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    Json(request): Json<UpdateGameRequest>,
-) -> Result<Json<ApiResponse<Game>>, StatusCode> {
-    match state.db.update_game(&id, request).await {
-        Ok(Some(game)) => Ok(Json(ApiResponse::success(game))),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to update game: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-pub async fn delete_game(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
-    match state.db.delete_game(&id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to delete game: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
 pub async fn search_igdb_games(
     State(state): State<AppState>,
     Query(params): Query<SearchQuery>,
@@ -161,7 +135,6 @@ pub async fn fetch_game_metadata(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<ApiResponse<Game>>, StatusCode> {
-    // First, get the game from our database
     let game = match state.db.get_game_by_id(&id).await {
         Ok(Some(game)) => game,
         Ok(None) => return Err(StatusCode::NOT_FOUND),
@@ -171,17 +144,14 @@ pub async fn fetch_game_metadata(
         }
     };
 
-    // If the game has an IGDB ID, fetch metadata
     if let Some(igdb_id) = game.igdb_id {
         match state.igdb_client.get_game_by_id(igdb_id).await {
             Ok(Some(igdb_game)) => {
-                // Update the game with metadata
                 if let Err(e) = state.db.update_game_metadata(&id, &igdb_game).await {
                     tracing::error!("Failed to update game metadata: {}", e);
                     return Err(StatusCode::INTERNAL_SERVER_ERROR);
                 }
 
-                // Return the updated game
                 match state.db.get_game_by_id(&id).await {
                     Ok(Some(updated_game)) => Ok(Json(ApiResponse::success(updated_game))),
                     Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -201,7 +171,6 @@ pub async fn fetch_game_metadata(
             }
         }
     } else {
-        // No IGDB ID, return the game as-is
         Ok(Json(ApiResponse::success(game)))
     }
 }
