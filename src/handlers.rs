@@ -113,6 +113,35 @@ pub async fn get_game(
     }
 }
 
+pub async fn update_game(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(request): Json<UpdateGameRequest>,
+) -> Result<Json<ApiResponse<Game>>, StatusCode> {
+    match state.db.update_game(&id, request).await {
+        Ok(Some(game)) => Ok(Json(ApiResponse::success(game))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to update game: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn delete_game(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    match state.db.delete_game(&id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to delete game: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn search_igdb_games(
     State(state): State<AppState>,
     Query(params): Query<SearchQuery>,
