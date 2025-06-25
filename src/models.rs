@@ -46,8 +46,8 @@ pub struct GameListResponse {
     pub per_page: i64,
 }
 
-// IGDB API Response structures
-#[derive(Debug, Deserialize)]
+// IGDB API Response structures - Added Serialize trait
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbGame {
     pub id: i64,
     pub name: String,
@@ -62,38 +62,38 @@ pub struct IgdbGame {
     pub involved_companies: Option<Vec<IgdbInvolvedCompany>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbCover {
     pub id: i64,
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbScreenshot {
     pub id: i64,
     pub url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbGenre {
     pub id: i64,
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbPlatform {
     pub id: i64,
     pub name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbInvolvedCompany {
     pub company: IgdbCompany,
     pub developer: bool,
     pub publisher: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgdbCompany {
     pub id: i64,
     pub name: String,
