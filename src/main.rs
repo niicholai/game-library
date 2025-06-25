@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 use std::sync::Arc;
 use tracing_subscriber;
 
@@ -51,19 +51,23 @@ async fn main() -> anyhow::Result<()> {
         igdb_client,
     });
 
-    // Build the application router - FIXED: Using {id} instead of :id
+    // Build the application router with static file serving
     let app = Router::new()
+        // API routes
         .route("/health", get(handlers::health_check))
         .route("/api/games", get(handlers::get_games).post(handlers::create_game))
         .route("/api/games/{id}", get(handlers::get_game))
         .route("/api/games/{id}/metadata", post(handlers::fetch_game_metadata))
         .route("/api/search/igdb", get(handlers::search_igdb_games))
+        .with_state(state)
         .layer(CorsLayer::permissive())
-        .with_state(state);
+        // Serve static files (HTML, CSS, JS) from the static directory
+        .nest_service("/", ServeDir::new("static"));
 
     // Start the server
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     tracing::info!("Server starting on port {}", port);
+    tracing::info!("Web interface available at http://localhost:{}", port);
 
     axum::serve(listener, app).await?;
 

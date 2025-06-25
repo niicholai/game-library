@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SH Game Hub - Self Hosted Game Library</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="css/all.css" rel="stylesheet">
+
+</head>
+<body>
+<!-- Header -->
+<header class="header">
+    <div class="header-content">
+        <div class="logo">
+            <i class="fas fa-gamepad"></i>
+            <span class="logo-text">SH Game Hub</span>
+            <span class="logo-subtitle">Self Hosted</span>
+        </div>
+
+        <nav class="nav">
+            <a href="#" class="nav-link active" data-section="library">
+                <i class="fas fa-book"></i>
+                Library
+            </a>
+            <a href="#" class="nav-link" data-section="store">
+                <i class="fas fa-store"></i>
+                Store
+            </a>
+            <a href="#" class="nav-link" data-section="search">
+                <i class="fas fa-search"></i>
+                Search
+            </a>
+        </nav>
+
+        <div class="header-actions">
+            <div class="search-container">
+                <label for="searchInput" class="sr-only">Search games</label>
+                <input type="text" id="searchInput" placeholder="Search games..." class="search-input">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+
+            <button class="btn-icon" id="refreshBtn" title="Refresh Library">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <h3>Quick Actions</h3>
+            <button class="sidebar-btn" id="addGameBtn">
+                <i class="fas fa-plus"></i>
+                Add Game
+            </button>
+            <button class="sidebar-btn" id="scanLibraryBtn">
+                <i class="fas fa-folder-open"></i>
+                Scan Library
+            </button>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Categories</h3>
+            <div class="category-list">
+                <div class="category-item active" data-filter="all">
+                    <i class="fas fa-th"></i>
+                    All Games
+                    <span class="count" id="allCount">0</span>
+                </div>
+                <div class="category-item" data-filter="installed">
+                    <i class="fas fa-download"></i>
+                    Installed
+                    <span class="count" id="installedCount">0</span>
+                </div>
+                <div class="category-item" data-filter="uninstalled">
+                    <i class="fas fa-cloud"></i>
+                    Not Installed
+                    <span class="count" id="uninstalledCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Library Stats</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total Games</span>
+                    <span class="stat-value" id="totalGames">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Size</span>
+                    <span class="stat-value" id="totalSize">0 GB</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Content Area -->
+    <div class="content">
+        <!-- Library Section -->
+        <section id="library-section" class="section active">
+            <div class="section-header">
+                <h2>Your Game Library</h2>
+                <div class="view-controls">
+                    <button class="view-btn active" data-view="grid">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button class="view-btn" data-view="list">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="games-container" id="gamesContainer">
+                <!-- Games will be loaded here -->
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <span>Loading games...</span>
+            </div>
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <i class="fas fa-gamepad"></i>
+                <h3>No games in your library</h3>
+                <p>Add some games to get started!</p>
+                <button class="btn-primary" id="addFirstGameBtn">Add Your First Game</button>
+            </div>
+        </section>
+
+        <!-- Store Section -->
+        <section id="store-section" class="section">
+            <div class="section-header">
+                <h2>Game Store</h2>
+                <p>Search and add games from IGDB</p>
+            </div>
+
+            <div class="store-search">
+                <label for="storeSearchInput" class="sr-only">Search for games to add</label>
+                <input type="text" id="storeSearchInput" placeholder="Search for games to add..." class="store-search-input">
+                <button class="btn-primary" id="storeSearchBtn">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+            </div>
+
+            <div class="store-results" id="storeResults">
+                <!-- Search results will appear here -->
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section id="search-section" class="section">
+            <div class="section-header">
+                <h2>Advanced Search</h2>
+                <p>Find games in your library</p>
+            </div>
+
+            <div class="search-filters">
+                <label for="advancedSearchInput" class="sr-only">Search your library</label>
+                <input type="text" id="advancedSearchInput" placeholder="Search your library..." class="search-filter-input">
+
+                <label for="genreFilter" class="sr-only">Filter by genre</label>
+                <select id="genreFilter" class="search-filter-select">
+                    <option value="">All Genres</option>
+                </select>
+
+                <label for="statusFilter" class="sr-only">Filter by status</label>
+                <select id="statusFilter" class="search-filter-select">
+                    <option value="">All Status</option>
+                    <option value="installed">Installed</option>
+                    <option value="uninstalled">Not Installed</option>
+                </select>
+            </div>
+
+            <div class="search-results" id="searchResults">
+                <!-- Search results will appear here -->
+            </div>
+        </section>
+    </div>
+</main>
+
+<!-- Game Detail Modal -->
+<div class="modal" id="gameModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalGameTitle">Game Title</h2>
+            <button class="modal-close" id="modalClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Game details will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Add Game Modal -->
+<div class="modal" id="addGameModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Game</h2>
+            <button class="modal-close" id="addGameModalClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="addGameForm">
+                <div class="form-group">
+                    <label for="gameName">Game Name</label>
+                    <input type="text" id="gameName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="gameIgdbId">IGDB ID (optional)</label>
+                    <input type="number" id="gameIgdbId" name="igdb_id">
+                </div>
+                <div class="form-group">
+                    <label for="gameFilePath">File Path (optional)</label>
+                    <input type="text" id="gameFilePath" name="file_path">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelAddGame">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Game</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
