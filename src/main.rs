@@ -2,10 +2,15 @@ mod models;
 mod database;
 mod igdb_client;
 mod handlers;
+mod auth;
+mod auth_service;
+mod auth_handlers;
+mod middleware;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, delete},
     Router,
+    middleware::from_fn_with_state,
 };
 use tower_http::{cors::CorsLayer, services::ServeDir};
 use std::sync::Arc;
@@ -14,6 +19,7 @@ use tracing_subscriber;
 use crate::{
     database::Database,
     igdb_client::IgdbClient,
+    auth_service::AuthService,
     handlers::{AppStateInner, AppState},
 };
 
@@ -45,23 +51,40 @@ async fn main() -> anyhow::Result<()> {
     let igdb_client = IgdbClient::new(igdb_client_id, igdb_access_token);
     tracing::info!("IGDB client initialized");
 
+    // Initialize auth service
+    let auth_service = AuthService::new(db.get_pool().clone());
+    tracing::info!("Auth service initialized");
+
     // Create application state
     let state: AppState = Arc::new(AppStateInner {
         db,
         igdb_client,
+        auth_service,
     });
 
-    // Build the application router with fallback_service for static files
+    // Build the application router with authentication
     let app = Router::new()
-        // API routes
+        // Public routes (no auth required)
+        .route("/api/auth/login", post(auth_handlers::login))
+
+        // Protected routes (auth required)
+        .route("/api/auth/me", get(auth_handlers::me))
+        .route("/api/auth/logout", post(auth_handlers::logout))
+        .route_layer(from_fn_with_state(state.clone(), middleware::auth_middleware))
+
+        // Admin-only routes
+        .route("/api/admin/users", get(auth_handlers::list_users).post(auth_handlers::create_user))
+        .route("/api/admin/users/{id}", delete(auth_handlers::delete_user))
+        .route("/api/admin/games", get(handlers::get_games).post(handlers::create_game))
+        .route("/api/admin/games/{id}", get(handlers::get_game))
+        .route("/api/admin/games/{id}/metadata", post(handlers::fetch_game_metadata))
+        .route("/api/admin/search/igdb", get(handlers::search_igdb_games))
+        .route_layer(from_fn_with_state(state.clone(), middleware::admin_middleware))
+
+        // Health check (no auth)
         .route("/health", get(handlers::health_check))
-        .route("/api/games", get(handlers::get_games).post(handlers::create_game))
-        .route("/api/games/{id}", get(handlers::get_game))
-        .route("/api/games/{id}/metadata", post(handlers::fetch_game_metadata))
-        .route("/api/search/igdb", get(handlers::search_igdb_games))
         .with_state(state)
         .layer(CorsLayer::permissive())
-        // Use fallback_service instead of nest_service for serving static files
         .fallback_service(ServeDir::new("static"));
 
     // Start the server
