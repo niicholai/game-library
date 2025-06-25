@@ -1,5 +1,7 @@
 ```console
-SH Game Hub
+SH Game Hub Backend
+
+This is the backend that serves as the core of the SHGH.
 ```
 
 ```
