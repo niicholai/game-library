@@ -6,6 +6,7 @@ mod auth;
 mod auth_service;
 mod auth_handlers;
 mod middleware;
+mod user_handlers;
 
 use axum::{
     routing::{get, post, delete},
@@ -62,21 +63,26 @@ async fn main() -> anyhow::Result<()> {
         auth_service,
     });
 
-    // Build the application router with authentication
+    // Build the application router with multi-user game management
     let app = Router::new()
         // Public routes (no auth required)
         .route("/api/auth/login", post(auth_handlers::login))
 
-        // Protected routes (auth required)
+        // User routes (auth required)
         .route("/api/auth/me", get(auth_handlers::me))
         .route("/api/auth/logout", post(auth_handlers::logout))
+        .route("/api/store/games", get(user_handlers::get_store_games))
+        .route("/api/user/library", get(user_handlers::get_user_library))
+        .route("/api/user/library/{id}", get(user_handlers::get_user_game))
+        .route("/api/user/games/{id}/install", post(user_handlers::install_game))
+        .route("/api/user/games/{id}/uninstall", delete(user_handlers::uninstall_game))
         .route_layer(from_fn_with_state(state.clone(), middleware::auth_middleware))
 
         // Admin-only routes
         .route("/api/admin/users", get(auth_handlers::list_users).post(auth_handlers::create_user))
         .route("/api/admin/users/{id}", delete(auth_handlers::delete_user))
         .route("/api/admin/games", get(handlers::get_games).post(handlers::create_game))
-        .route("/api/admin/games/{id}", get(handlers::get_game))
+        .route("/api/admin/games/{id}", get(handlers::get_game)) // Removed the .put(handlers::update_game)
         .route("/api/admin/games/{id}/metadata", post(handlers::fetch_game_metadata))
         .route("/api/admin/search/igdb", get(handlers::search_igdb_games))
         .route_layer(from_fn_with_state(state.clone(), middleware::admin_middleware))
@@ -90,7 +96,13 @@ async fn main() -> anyhow::Result<()> {
     // Start the server
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     tracing::info!("Server starting on port {}", port);
-    tracing::info!("Web interface available at http://localhost:{}", port);
+    tracing::info!("Admin Web interface available at http://localhost:{}", port);
+    tracing::info!("API Endpoints:");
+    tracing::info!("  - POST /api/auth/login - User login");
+    tracing::info!("  - GET /api/store/games - Browse available games");
+    tracing::info!("  - GET /api/user/library - User's personal library");
+    tracing::info!("  - POST /api/user/games/{{id}}/install - Install game");
+    tracing::info!("  - Admin routes under /api/admin/*");
 
     axum::serve(listener, app).await?;
 
